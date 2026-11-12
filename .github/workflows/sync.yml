@@ -1,0 +1,37 @@
+name: Sync game from frontend
+
+# 이 저장소는 https://snap-or-kiss.github.io/ (주소에 /frontend/가 안 붙는 루트)를 서빙한다.
+# 게임 본체는 snap-or-kiss/frontend 의 main 이고, 여기서는 index.html을 가져와 커밋만 한다.
+# 직접 수정하지 말 것. 다음 동기화 때 덮어써진다.
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: snap-or-kiss/frontend
+          ref: main
+          path: src
+      - name: Copy and commit if changed
+        run: |
+          cp src/index.html index.html
+          SHA=$(git -C src rev-parse --short HEAD)
+          if git diff --quiet -- index.html; then echo "변경 없음 ($SHA)"; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "Sync from frontend@$SHA"
+          git push
